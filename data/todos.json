@@ -1,0 +1,58 @@
+[
+  {
+    "Id": "9293cb70-ecc1-4fd6-8744-ec0b51b3ba67",
+    "Text": "Aykome Uygulamas\u0131||Silien ya da iptal edilen ruhsatlar\u0131n takip edilebilece\u011Fi bir ekrann.2",
+    "Status": "todo",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-29T10:13:11.2397072Z"
+  },
+  {
+    "Id": "9ba813f1-3f2d-4802-9eb3-d88c36cd961a",
+    "Text": "Hekim ve Isg||Muayene giri\u015F ekran\u0131",
+    "Status": "todo",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-29T10:13:36.5292644Z"
+  },
+  {
+    "Id": "71eb95dd-d40a-40e2-8c22-056cf29f0037",
+    "Text": "Zab\u0131ta Uygulamas\u0131||Genel revizyonnn",
+    "Status": "progress",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-29T10:13:49.7611352Z"
+  },
+  {
+    "Id": "b0d86dd5-1748-465b-ab61-18dc30578c74",
+    "Text": "Kurumi\u00E7i||Kurumi\u00E7i altyap\u0131 \u00E7al\u0131\u015Fmalar\u0131",
+    "Status": "progress",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-29T10:14:26.4395811Z"
+  },
+  {
+    "Id": "0f71abb6-00b7-484a-b449-4d6a5d20c1dd",
+    "Text": "Aykome Uygulamas\u0131||Denetim Raporlar\u0131 Ekran\u01312",
+    "Status": "done",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-30T07:07:00.6040525Z"
+  },
+  {
+    "Id": "da42f51c-4fb6-48cf-99d1-575ca03854ac",
+    "Text": "Kre\u015F Uygulamas\u0131||Sicil Ekleme ve Tahakkuk i\u015Flemleri",
+    "Status": "done",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-30T07:07:31.7637053Z"
+  },
+  {
+    "Id": "505869dc-3b00-4eb6-8323-74f43604f591",
+    "Text": "Kps Public Service Kapanmas\u0131||Patili dostlar kimlik do\u011Frulamas\u0131 kurumi\u00E7ine aktar\u0131ld\u0131.",
+    "Status": "done",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-30T12:35:27.6123606Z"
+  },
+  {
+    "Id": "bfb2938d-c46b-4679-89ea-2234f0085e28",
+    "Text": "Emlak Uygulamalar\u0131||Emlak uygulamalar\u0131 arsa sat\u0131\u015Fta sat\u0131\u015Ftan kalkanlar sayfas\u0131nda arama filtresine revizyon filtresinin de eklenmesi",
+    "Status": "todo",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-09-30T12:43:58.9772603Z"
+  }
+]

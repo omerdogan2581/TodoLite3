@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to right,#d1d5db,#e5e7eb);
+            font-family: sans-serif;
+        }
+
+        .container {
+            background: rgba(255,255,255,.9);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.1);
+            width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+            button:hover {
+                background: #2563eb;
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Giriş Yap</h2>
+        <input id="username" placeholder="Kullanıcı Adı">
+        <input id="password" type="password" placeholder="Şifre">
+        <button onclick="login()">Giriş</button>
+    </div>
+
+    <script>
+        async function login() {
+            const Username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!username || !password) return alert('Bilgileri girin');
+            // şifre hashlenmeden plain gönderiyoruz, server hashleyecek
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Username, PasswordHash: password })
+            });
+            if (res.ok) {
+                location.href = '/index.html';
+            } else {
+                Swal.fire('Hata', 'Kullanıcı adı veya şifre yanlış', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

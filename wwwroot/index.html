@@ -1,0 +1,271 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Görev Takip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI',sans-serif;
+            background: linear-gradient(to right,#e5e7eb 0%,#d1d5db 50%,#e5e7eb 100%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255,255,255,0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+        }
+
+        .task {
+            position: relative;
+            background: rgba(255,255,255,0.9);
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            cursor: grab;
+            transition: .2s;
+        }
+
+            .task:hover {
+                transform: translateY(-4px) scale(1.02);
+            }
+
+            .task.dragging {
+                opacity: .5;
+            }
+
+        .btn-box {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .edit, .del {
+            border: none;
+            padding: 2px 6px;
+            font-size: .8rem;
+            border-radius: 6px;
+            cursor: pointer
+        }
+
+        .edit {
+            color: #2563eb;
+            background: rgba(59,130,246,0.1)
+        }
+
+        .del {
+            color: #dc2626;
+            background: rgba(220,38,38,0.1)
+        }
+
+        .column {
+            min-height: 300px;
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.5)
+        }
+
+            .column.drag-over {
+                background: rgba(255,255,255,0.7)
+            }
+
+        .column-header {
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center
+        }
+
+        .input-field, .textarea-field {
+            background: rgba(255,255,255,0.8);
+            border: 1px solid #ccc;
+            padding: 10px 14px;
+            border-radius: 10px;
+            width: 100%
+        }
+
+        .btn {
+            padding: .6rem 1.4rem;
+            border-radius: .6rem;
+            background: linear-gradient(90deg,#3b82f6,#06b6d4);
+            color: #fff;
+            font-weight: 600
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #111
+        }
+
+        .desc-text {
+            font-size: .85rem;
+            color: #555
+        }
+
+        .date-text {
+            font-size: .75rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 4px
+        }
+    </style>
+</head>
+<body class="pt-6 sm:pt-10">
+
+    <div class="glass-panel mx-auto p-4 sm:p-6 w-[95%] max-w-6xl">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-blue-600">🚀 Görev Takip</h1>
+            <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Çıkış Yap</button>
+        </div>
+
+        <!-- Görev ekleme -->
+        <div class="flex flex-col gap-4 items-center mb-6">
+            <input id="task-title" class="input-field max-w-lg" placeholder="Başlık yaz...">
+            <textarea id="task-desc" class="textarea-field max-w-lg h-24 resize-none" placeholder="Açıklama ekle..."></textarea>
+            <button id="add-btn" class="btn">Ekle</button>
+        </div>
+
+        <!-- Sütunlar -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="column" id="col-todo" data-status="todo">
+                <div class="column-header">📝 Yapılacaklar</div><div class="list space-y-3"></div>
+            </div>
+            <div class="column" id="col-progress" data-status="progress">
+                <div class="column-header">⚙️ Şu An Yaptıklarım</div><div class="list space-y-3"></div>
+            </div>
+            <div class="column" id="col-done" data-status="done">
+                <div class="column-header">✅ Bitenler</div><div class="list space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Şablon -->
+    <template id="tpl">
+        <div class="task" draggable="true">
+            <div class="btn-box">
+                <button class="edit">✏</button>
+                <button class="del">✖</button>
+            </div>
+            <div class="title-text"></div>
+            <div class="desc-text"></div>
+            <div class="date-text"></div>
+        </div>
+    </template>
+
+    <script>
+        const api = {
+            list: () => fetch('/api/todos').then(r => r.json()),
+            add: t => fetch('/api/todos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Text: t.title + '||' + t.desc, Status: 'todo' })
+            }).then(r => r.json()),
+            upd: (id, p) => fetch(`/api/todos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(p)
+            }),
+            del: id => fetch(`/api/todos/${id}`, { method: 'DELETE' })
+        };
+
+
+        function formatDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        function parseText(txt) { const [t, ...r] = txt.split('||'); return { title: t, desc: r.join('||') } }
+
+        const tpl = document.getElementById('tpl');
+        const titleInput = document.getElementById('task-title');
+        const descInput = document.getElementById('task-desc');
+        const addBtn = document.getElementById('add-btn');
+        const columns = { todo: document.querySelector('#col-todo .list'), progress: document.querySelector('#col-progress .list'), done: document.querySelector('#col-done .list') };
+
+        async function render() {
+            const items = await api.list();
+            Object.values(columns).forEach(c => c.innerHTML = '');
+
+            items.forEach(t => {
+                const el = tpl.content.firstElementChild.cloneNode(true);
+                const parts = parseText(t.text);
+                el.dataset.id = t.id;
+                el.dataset.status = t.status || 'todo';
+
+                el.querySelector('.title-text').textContent = parts.title || '(Başlık yok)';
+                el.querySelector('.desc-text').textContent = parts.desc || '';
+                el.querySelector('.date-text').textContent = t.createdAt ? `🗓 ${formatDate(t.createdAt)}` : '';
+
+                // SİL
+                el.querySelector('.del').addEventListener('click', async () => {
+                    const res = await Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'Vazgeç' });
+                    if (res.isConfirmed) { await api.del(t.id); Swal.fire('Silindi', 'Görev silindi', 'success'); render(); }
+                });
+
+                // DÜZENLE
+                el.querySelector('.edit').addEventListener('click', async () => {
+                    const { value: fv } = await Swal.fire({
+                        title: 'Görevi Düzenle',
+                        html: `<input id="swal-title" class="swal2-input" value="${parts.title || ''}"><textarea id="swal-desc" class="swal2-textarea">${parts.desc || ''}</textarea>`,
+                        focusConfirm: false, showCancelButton: true,
+                        preConfirm: () => ({ title: document.getElementById('swal-title').value.trim(), desc: document.getElementById('swal-desc').value.trim() })
+                    });
+                    if (fv) { await api.upd(t.id, { Text: `${fv.title}||${fv.desc}`, Status: t.status }); Swal.fire('Güncellendi', 'Görev güncellendi', 'success'); render(); }
+                });
+
+                // DRAG
+                el.addEventListener('dragstart', () => el.classList.add('dragging'));
+                el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+                // MOBİL TIKLAMA
+                el.addEventListener('click', async (e) => {
+                    if (e.target.classList.contains('edit') || e.target.classList.contains('del')) return;
+                    if (window.innerWidth < 768) {
+                        const { value: newSt } = await Swal.fire({ title: 'Taşı', input: 'select', inputOptions: { todo: '📝 Yapılacaklar', progress: '⚙️ Şu An Yaptıklarım', done: '✅ Bitenler' }, inputValue: t.status || 'todo', showCancelButton: true });
+                        if (newSt) { await api.upd(t.id, { Status: newSt }); Swal.fire('Taşındı', 'Görev güncellendi', 'success'); render(); }
+                    }
+                });
+
+                columns[t.status || 'todo'].appendChild(el);
+            });
+        }
+
+        // Ekleme
+        addBtn.addEventListener('click', async () => {
+            const title = titleInput.value.trim(), desc = descInput.value.trim();
+            if (!title) return;
+            await api.add({ title, desc });
+            titleInput.value = ''; descInput.value = '';
+            render();
+        });
+
+        [titleInput, descInput].forEach(el => el.addEventListener('keypress', e => { if (e.key === 'Enter' && e.ctrlKey) addBtn.click(); }));
+
+        // DRAG&DROP sütun
+        document.querySelectorAll('.column').forEach(col => {
+            col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+            col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+            col.addEventListener('drop', async e => {
+                e.preventDefault(); col.classList.remove('drag-over');
+                const dragged = document.querySelector('.dragging');
+                if (dragged) {
+                    const id = dragged.dataset.id;
+                    const newSt = col.dataset.status;
+                    await api.upd(id, { Status: newSt });
+                    render();
+                }
+            });
+        });
+
+        // LOGOUT
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            if (res.ok) { Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info').then(() => location.href = '/login.html'); }
+        });
+
+        render();
+    </script>
+</body>
+</html>
