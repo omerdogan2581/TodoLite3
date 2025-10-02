@@ -2,72 +2,237 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Login / Register</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        /* Genel */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: linear-gradient(to right,#d1d5db,#e5e7eb);
-            font-family: sans-serif;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2, #6ee7b7);
+            background-size: 300% 300%;
+            animation: gradientBG 15s ease infinite;
         }
 
-        .container {
-            background: rgba(255,255,255,.9);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(0,0,0,.1);
-            width: 300px;
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
+
+        /* Card */
+        .container {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            width: 340px;
+            color: #fff;
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+            .tabs button {
+                flex: 1;
+                padding: 12px;
+                border: none;
+                cursor: pointer;
+                font-weight: bold;
+                background: rgba(255,255,255,0.2);
+                color: #eee;
+                transition: 0.3s;
+            }
+
+                .tabs button.active {
+                    background: #3b82f6;
+                    color: #fff;
+                }
+
+        /* Form */
+        .form {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+            .form.active {
+                display: block;
+            }
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 0.95rem;
         }
 
-        button {
+            input::placeholder {
+                color: #ddd;
+            }
+
+        small {
+            display: block;
+            margin-top: -5px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            color: #ff7a7a;
+        }
+
+        /* Buton */
+        button.submit {
             width: 100%;
-            padding: 10px;
-            background: #3b82f6;
+            padding: 12px;
+            background: linear-gradient(90deg,#3b82f6,#06b6d4);
             color: #fff;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-            button:hover {
-                background: #2563eb;
+            button.submit:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 15px rgba(0,0,0,0.25);
             }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Giriş Yap</h2>
-        <input id="username" placeholder="Kullanıcı Adı">
-        <input id="password" type="password" placeholder="Şifre">
-        <button onclick="login()">Giriş</button>
+        <div class="tabs">
+            <button id="tabLogin" class="active" onclick="showForm('login')">Giriş</button>
+            <button id="tabRegister" onclick="showForm('register')">Kayıt Ol</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="form active">
+            <input id="loginUsername" placeholder="Kullanıcı Adı">
+            <input id="loginPassword" type="password" placeholder="Şifre">
+            <button class="submit" onclick="login()">Giriş</button>
+        </div>
+
+        <!-- Register Form -->
+        <div id="registerForm" class="form">
+            <input id="registerUsername" placeholder="Kullanıcı Adı">
+            <small id="registerUserError" style="display:none"></small>
+
+            <input id="registerPassword" type="password" placeholder="Şifre">
+            <small id="registerPassError" style="display:none"></small>
+
+            <button class="submit" onclick="register()">Kayıt Ol</button>
+        </div>
     </div>
 
     <script>
+        function showForm(type) {
+            document.getElementById('loginForm').classList.remove('active');
+            document.getElementById('registerForm').classList.remove('active');
+            document.getElementById('tabLogin').classList.remove('active');
+            document.getElementById('tabRegister').classList.remove('active');
+
+            if (type === 'login') {
+                document.getElementById('loginForm').classList.add('active');
+                document.getElementById('tabLogin').classList.add('active');
+            } else {
+                document.getElementById('registerForm').classList.add('active');
+                document.getElementById('tabRegister').classList.add('active');
+            }
+        }
+
         async function login() {
-            const Username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            if (!username || !password) return alert('Bilgileri girin');
-            // şifre hashlenmeden plain gönderiyoruz, server hashleyecek
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            if (!username || !password) {
+                Swal.fire('Hata', 'Bilgileri giriniz', 'warning');
+                return;
+            }
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ Username, PasswordHash: password })
+                body: JSON.stringify({ Username: username, PasswordHash: password })
             });
             if (res.ok) {
                 location.href = '/index.html';
             } else {
                 Swal.fire('Hata', 'Kullanıcı adı veya şifre yanlış', 'error');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+            const userError = document.getElementById('registerUserError');
+            const passError = document.getElementById('registerPassError');
+            userError.style.display = "none";
+            passError.style.display = "none";
+
+            if (!username) {
+                Swal.fire('Hata', 'Kullanıcı adını giriniz', 'warning');
+                return;
+            }
+            if (!password) {
+                Swal.fire('Hata', 'Şifre giriniz', 'warning');
+                return;
+            }
+            if (password.length < 6) {
+                passError.textContent = "❌ Şifre en az 6 karakter olmalı.";
+                passError.style.display = "block";
+                return;
+            }
+
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Username: username, PasswordHash: password })
+            });
+
+            if (res.ok) {
+                Swal.fire('Başarılı', 'Kayıt başarılı! Giriş yapabilirsiniz.', 'success');
+                showForm('login');
+            } else {
+                const msg = await res.text();
+                Swal.fire('Hata', msg, 'error');
+                if (msg.includes("Bu kullanıcı adı zaten alınmış")) {
+                    userError.textContent = "❌ Bu kullanıcı adı zaten kullanılıyor.";
+                    userError.style.display = "block";
+                }
             }
         }
     </script>
