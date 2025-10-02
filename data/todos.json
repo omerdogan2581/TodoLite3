@@ -54,5 +54,12 @@
     "Status": "done",
     "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
     "CreatedAt": "2025-09-30T12:43:58.9772603Z"
+  },
+  {
+    "Id": "8ffd4291-f05b-4354-9c0a-d737c3282507",
+    "Text": "Yetki De\u011Fi\u015Fikli\u011Fi Geri Al\u0131nacak||Cemil K\u00FC\u00E7\u00FCke verilen Ek  k\u0131rsal hizmet m\u00FCd yetkisi 07.10.2025 de geri al\u0131ncak",
+    "Status": "todo",
+    "CreatorUserId": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
+    "CreatedAt": "2025-10-02T10:16:53.675611Z"
   }
 ]

@@ -2,11 +2,22 @@
   {
     "Id": "e2e6a541-167c-4446-bd33-9c0679d0abaf",
     "Username": "omerD",
-    "PasswordHash": "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5"
+    "PasswordHash": "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+    "Status": true,
+    "Role": "Admin"
   },
   {
     "Id": "8c10d717-49ca-4149-8552-1790a459ccd9",
     "Username": "semihM",
-    "PasswordHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+    "PasswordHash": "8bb0cf6eb9b17d0f7d22b456f121257dc1254e1f01665370476383ea776df414",
+    "Status": true,
+    "Role": "User"
+  },
+  {
+    "Id": "11b1a35c-175d-4058-abda-6b01fe695e71",
+    "Username": "OmerDd",
+    "PasswordHash": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "Status": true,
+    "Role": "User"
   }
 ]

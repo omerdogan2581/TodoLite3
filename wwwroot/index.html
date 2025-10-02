@@ -121,6 +121,7 @@
     <div class="glass-panel mx-auto p-4 sm:p-6 w-[95%] max-w-6xl">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-blue-600">🚀 Görev Takip</h1>
+            <button id="users-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 hidden">Kullanıcılar</button>
             <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Çıkış Yap</button>
         </div>
 
@@ -265,7 +266,35 @@
             if (res.ok) { Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info').then(() => location.href = '/login.html'); }
         });
 
+        // Kullanıcı rolünü backend’den cookie yerine localStorage’da saklayalım
+        async function checkRole() {
+            const res = await fetch('/api/auth/me'); // backend’de cookie’den kullanıcıyı dönen bir endpoint olmalı
+            if (res.ok) {
+                const user = await res.json();
+                if (user.role === "Admin") {
+                    document.getElementById('users-btn').classList.remove('hidden');
+                }
+            }
+        }
+
+        // Kullanıcılar sayfasına yönlendirme
+        document.getElementById('users-btn').addEventListener('click', () => {
+            location.href = '/users.html';
+        });
+
+        // LOGOUT
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            if (res.ok) {
+                Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info').then(() => location.href = '/login.html');
+            }
+        });
+
+        // İlk açılışta rolü kontrol et
+        checkRole();
         render();
+
+
     </script>
 </body>
 </html>

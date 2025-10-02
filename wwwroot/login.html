@@ -183,15 +183,22 @@
                 Swal.fire('Hata', 'Bilgileri giriniz', 'warning');
                 return;
             }
+
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ Username: username, PasswordHash: password })
             });
+
             if (res.ok) {
                 location.href = '/index.html';
             } else {
-                Swal.fire('Hata', 'Kullanıcı adı veya şifre yanlış', 'error');
+                const msg = await res.text();
+                if (msg.includes("Hesabınız henüz aktif değil")) {
+                    Swal.fire('Bilgi', msg, 'info'); // Hesap aktif değil mesajı
+                } else {
+                    Swal.fire('Hata', 'Kullanıcı adı veya şifre yanlış', 'error');
+                }
             }
         }
 
