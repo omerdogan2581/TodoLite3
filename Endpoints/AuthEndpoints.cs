@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using TodoLite.Data;
 using TodoLite.Models;
 using TodoLite.Services;
 
@@ -9,14 +11,14 @@ namespace TodoLite.Endpoints
         public static void MapAuthEndpoints(this WebApplication app)
         {
             // REGISTER
-            app.MapPost("/api/auth/register", async (HttpContext ctx, UserService userService) =>
+            app.MapPost("/api/auth/register", async (HttpContext ctx, AppDbContext db, UserService userService) =>
             {
                 var input = await JsonSerializer.DeserializeAsync<User>(ctx.Request.Body);
                 if (input == null || string.IsNullOrWhiteSpace(input.Username) || string.IsNullOrWhiteSpace(input.PasswordHash))
                     return Results.BadRequest("Geçersiz kullanıcı verisi.");
 
-                var users = await userService.LoadUsers();
-                if (users.Any(u => u.Username.Equals(input.Username, StringComparison.OrdinalIgnoreCase)))
+                var exists = await db.Users.AnyAsync(u => u.Username.ToLower() == input.Username.ToLower());
+                if (exists)
                     return Results.Conflict("Bu kullanıcı adı zaten alınmış.");
 
                 var newUser = new User
@@ -28,22 +30,22 @@ namespace TodoLite.Endpoints
                     Role = "User"
                 };
 
-                users.Add(newUser);
-                await userService.SaveUsers(users);
+                db.Users.Add(newUser);
+                await db.SaveChangesAsync();
+
                 return Results.Ok(new { newUser.Id, newUser.Username });
             });
 
             // LOGIN
-            app.MapPost("/api/auth/login", async (HttpContext ctx, UserService userService) =>
+            app.MapPost("/api/auth/login", async (HttpContext ctx, AppDbContext db, UserService userService) =>
             {
                 var input = await JsonSerializer.DeserializeAsync<User>(ctx.Request.Body);
                 if (input == null) return Results.BadRequest();
 
-                var users = await userService.LoadUsers();
-                var u = users.FirstOrDefault(x =>
-                    x.Username == input.Username &&
-                    x.PasswordHash == userService.HashPassword(input.PasswordHash)
-                );
+                var hash = userService.HashPassword(input.PasswordHash);
+
+                var u = await db.Users
+                    .FirstOrDefaultAsync(x => x.Username == input.Username && x.PasswordHash == hash);
 
                 if (u == null) return Results.Unauthorized();
                 if (!u.Status) return Results.Forbid();
@@ -62,20 +64,18 @@ namespace TodoLite.Endpoints
             });
 
             // ME (aktif kullanıcı bilgisi)
-            app.MapGet("/api/auth/me", async (HttpContext ctx, UserService userService) =>
+            app.MapGet("/api/auth/me", async (HttpContext ctx, AppDbContext db) =>
             {
                 var uid = ctx.Request.Cookies["uid"];
                 if (string.IsNullOrEmpty(uid))
                     return Results.Unauthorized();
 
-                var users = await userService.LoadUsers();
-                var u = users.FirstOrDefault(x => x.Id == uid);
+                var u = await db.Users.FirstOrDefaultAsync(x => x.Id == uid);
                 if (u == null)
                     return Results.Unauthorized();
 
                 return Results.Ok(new { u.Id, u.Username, u.Role, u.Status });
             });
-
         }
     }
 }

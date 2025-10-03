@@ -1,6 +1,7 @@
-﻿using System.Text.Json;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using TodoLite.Data;
 using TodoLite.Models;
-using TodoLite.Services;
 
 namespace TodoLite.Endpoints
 {
@@ -24,16 +25,45 @@ namespace TodoLite.Endpoints
                 await next();
             });
 
-            // GET
-            app.MapGet("/api/todos", async (HttpContext ctx, TodoService todoService) =>
+            // GET - Kullanıcının tüm todoları (sadece filtre)
+            app.MapGet("/api/todos", async (
+                HttpContext ctx,
+                AppDbContext db,
+                string? search = null,
+                string? status = null,
+                DateTime? startDate = null,
+                DateTime? endDate = null
+            ) =>
             {
                 var uid = ctx.Items["uid"]?.ToString();
-                var list = await todoService.LoadTodos();
-                return list.Where(t => t.CreatorUserId == uid);
+                if (uid == null) return Results.Unauthorized();
+
+                var query = db.Todos.AsQueryable()
+                                    .Where(t => t.CreatorUserId == uid);
+
+                // Filtreler
+                if (!string.IsNullOrEmpty(search))
+                    query = query.Where(t => t.Text.Contains(search));
+
+                if (!string.IsNullOrEmpty(status))
+                    query = query.Where(t => t.Status == status);
+
+                if (startDate.HasValue)
+                    query = query.Where(t => t.CreatedAt >= startDate.Value);
+
+                if (endDate.HasValue)
+                    query = query.Where(t => t.CreatedAt <= endDate.Value);
+
+                var items = await query
+                    .OrderByDescending(t => t.CreatedAt)
+                    .ToListAsync();
+
+                return Results.Ok(items); // sadece liste döndürüyoruz
             });
 
-            // POST
-            app.MapPost("/api/todos", async (HttpContext ctx, TodoService todoService) =>
+
+            // POST - Yeni todo oluştur
+            app.MapPost("/api/todos", async (HttpContext ctx, AppDbContext db) =>
             {
                 var uid = ctx.Items["uid"]?.ToString();
                 var t = await JsonSerializer.DeserializeAsync<TodoItem>(ctx.Request.Body);
@@ -43,41 +73,38 @@ namespace TodoLite.Endpoints
                 t.CreatorUserId = uid;
                 t.CreatedAt = DateTime.UtcNow;
 
-                var list = await todoService.LoadTodos();
-                list.Add(t);
-                await todoService.SaveTodos(list);
+                db.Todos.Add(t);
+                await db.SaveChangesAsync();
 
                 return Results.Ok(t);
             });
 
-            // PUT
-            app.MapPut("/api/todos/{id:guid}", async (HttpContext ctx, Guid id, TodoService todoService) =>
+            // PUT - Todo güncelle
+            app.MapPut("/api/todos/{id:guid}", async (HttpContext ctx, Guid id, AppDbContext db) =>
             {
                 var uid = ctx.Items["uid"]?.ToString();
                 var input = await JsonSerializer.DeserializeAsync<TodoItem>(ctx.Request.Body);
                 if (input == null) return Results.BadRequest();
 
-                var list = await todoService.LoadTodos();
-                var t = list.FirstOrDefault(x => x.Id == id && x.CreatorUserId == uid);
+                var t = await db.Todos.FirstOrDefaultAsync(x => x.Id == id && x.CreatorUserId == uid);
                 if (t == null) return Results.NotFound();
 
                 if (!string.IsNullOrWhiteSpace(input.Text)) t.Text = input.Text;
                 if (!string.IsNullOrWhiteSpace(input.Status)) t.Status = input.Status;
 
-                await todoService.SaveTodos(list);
+                await db.SaveChangesAsync();
                 return Results.Ok(t);
             });
 
-            // DELETE
-            app.MapDelete("/api/todos/{id:guid}", async (HttpContext ctx, Guid id, TodoService todoService) =>
+            // DELETE - Todo sil
+            app.MapDelete("/api/todos/{id:guid}", async (HttpContext ctx, Guid id, AppDbContext db) =>
             {
                 var uid = ctx.Items["uid"]?.ToString();
-                var list = await todoService.LoadTodos();
-                var t = list.FirstOrDefault(x => x.Id == id && x.CreatorUserId == uid);
+                var t = await db.Todos.FirstOrDefaultAsync(x => x.Id == id && x.CreatorUserId == uid);
                 if (t == null) return Results.NotFound();
 
-                list.Remove(t);
-                await todoService.SaveTodos(list);
+                db.Todos.Remove(t);
+                await db.SaveChangesAsync();
                 return Results.Ok();
             });
         }

@@ -1,38 +1,78 @@
-﻿using System.Security.Cryptography;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
+using TodoLite.Data;
 using TodoLite.Models;
 
 namespace TodoLite.Services
 {
     public class UserService
     {
-        private readonly string _userFile;
+        private readonly AppDbContext _context;
 
-        public UserService(IWebHostEnvironment env)
+        public UserService(AppDbContext context)
         {
-            var dataDir = Path.Combine(env.ContentRootPath, "data");
-            Directory.CreateDirectory(dataDir);
-            _userFile = Path.Combine(dataDir, "users.json");
+            _context = context;
         }
 
-        public async Task<List<User>> LoadUsers()
+        // Tüm kullanıcıları getir
+        public async Task<List<User>> GetUsersAsync()
         {
-            if (!File.Exists(_userFile)) return new List<User>();
-            return JsonSerializer.Deserialize<List<User>>(await File.ReadAllTextAsync(_userFile)) ?? new();
+            return await _context.Users.ToListAsync();
         }
 
-        public async Task SaveUsers(List<User> list)
+        // Id ile kullanıcı getir
+        public async Task<User?> GetUserByIdAsync(string id)
         {
-            await File.WriteAllTextAsync(_userFile,
-                JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        // Username ile kullanıcı getir
+        public async Task<User?> GetUserByUsernameAsync(string username)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        }
+
+        // Yeni kullanıcı ekle
+        public async Task AddUserAsync(User user)
+        {
+            user.PasswordHash = HashPassword(user.PasswordHash); // şifreyi hashle
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+        }
+
+        // Kullanıcı güncelle
+        public async Task UpdateUserAsync(User user)
+        {
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+        }
+
+        // Kullanıcı sil
+        public async Task DeleteUserAsync(string id)
+        {
+            var user = await GetUserByIdAsync(id);
+            if (user != null)
+            {
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // Şifreyi hashle
         public string HashPassword(string plain)
         {
             using var sha = SHA256.Create();
             var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(plain));
             return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+        }
+
+        // Kullanıcı doğrulama (login için)
+        public async Task<User?> ValidateUserAsync(string username, string password)
+        {
+            var hash = HashPassword(password);
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == hash);
         }
     }
 }

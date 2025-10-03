@@ -1,29 +1,61 @@
-﻿using System.Text.Json;
+﻿using Microsoft.EntityFrameworkCore;
+using TodoLite.Data;
 using TodoLite.Models;
 
 namespace TodoLite.Services
 {
     public class TodoService
     {
-        private readonly string _todoFile;
+        private readonly AppDbContext _context;
 
-        public TodoService(IWebHostEnvironment env)
+        public TodoService(AppDbContext context)
         {
-            var dataDir = Path.Combine(env.ContentRootPath, "data");
-            Directory.CreateDirectory(dataDir);
-            _todoFile = Path.Combine(dataDir, "todos.json");
+            _context = context;
         }
 
-        public async Task<List<TodoItem>> LoadTodos()
+        // Tüm todoları getir
+        public async Task<List<TodoItem>> GetTodosAsync()
         {
-            if (!File.Exists(_todoFile)) return new List<TodoItem>();
-            return JsonSerializer.Deserialize<List<TodoItem>>(await File.ReadAllTextAsync(_todoFile)) ?? new();
+            return await _context.Todos.ToListAsync();
         }
 
-        public async Task SaveTodos(List<TodoItem> list)
+        // Id ile todo getir
+        public async Task<TodoItem?> GetTodoByIdAsync(Guid id)
         {
-            await File.WriteAllTextAsync(_todoFile,
-                JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+            return await _context.Todos.FindAsync(id);
+        }
+
+        // Yeni todo ekle
+        public async Task AddTodoAsync(TodoItem todo)
+        {
+            _context.Todos.Add(todo);
+            await _context.SaveChangesAsync();
+        }
+
+        // Todo güncelle
+        public async Task UpdateTodoAsync(TodoItem todo)
+        {
+            _context.Todos.Update(todo);
+            await _context.SaveChangesAsync();
+        }
+
+        // Todo sil
+        public async Task DeleteTodoAsync(Guid id)
+        {
+            var todo = await _context.Todos.FindAsync(id);
+            if (todo != null)
+            {
+                _context.Todos.Remove(todo);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // Kullanıcıya ait todoları getir
+        public async Task<List<TodoItem>> GetTodosByUserAsync(string userId)
+        {
+            return await _context.Todos
+                .Where(t => t.CreatorUserId == userId)
+                .ToListAsync();
         }
     }
 }

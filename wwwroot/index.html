@@ -20,17 +20,36 @@
             box-shadow: 0 6px 25px rgba(0,0,0,0.12);
         }
 
+        /* Neon hover animasyonu */
+        @keyframes neon-multi {
+            0% {
+                box-shadow: -5px 5px 10px #facc15, 5px -5px 10px #ef4444, -5px -5px 15px #22c55e, 5px 5px 20px #3b82f6;
+                border: 2px solid #facc15;
+            }
+
+            50% {
+                box-shadow: -8px 8px 20px #22c55e, 8px -8px 20px #f59e0b, -8px -8px 25px #ef4444, 8px 8px 30px #06b6d4;
+                border: 2px solid #ef4444;
+            }
+
+            100% {
+                box-shadow: -5px 5px 10px #facc15, 5px -5px 10px #ef4444, -5px -5px 15px #22c55e, 5px 5px 20px #3b82f6;
+                border: 2px solid #22c55e;
+            }
+        }
+
         .task {
             position: relative;
             background: rgba(255,255,255,0.9);
             padding: 14px 16px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
             cursor: grab;
             transition: .2s;
+            border: 2px solid transparent;
         }
 
             .task:hover {
+                animation: neon-multi 2s infinite alternate;
                 transform: translateY(-4px) scale(1.02);
             }
 
@@ -118,11 +137,29 @@
 </head>
 <body class="pt-6 sm:pt-10">
 
-    <div class="glass-panel mx-auto p-4 sm:p-6 w-[95%] max-w-6xl">
+    <div class="glass-panel mx-auto p-4 sm:p-6 w-[95%] max-w-7xl">
+
+        <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-blue-600">🚀 Görev Takip</h1>
-            <button id="users-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 hidden">Kullanıcılar</button>
-            <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Çıkış Yap</button>
+            <div class="flex gap-2">
+                <button id="users-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 hidden">Kullanıcılar</button>
+                <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Çıkış Yap</button>
+            </div>
+        </div>
+
+        <!-- Filtre Paneli -->
+        <div class="glass-panel p-4 mb-6 flex flex-wrap gap-4 items-center">
+            <input id="search-input" class="input-field w-48" placeholder="Ara...">
+            <select id="status-filter" class="input-field w-40">
+                <option value="">Tümü</option>
+                <option value="todo">📝 Yapılacaklar</option>
+                <option value="progress">⚙️ Şu An Yaptıklarım</option>
+                <option value="done">✅ Bitenler</option>
+            </select>
+            <input id="start-date" type="date" class="input-field w-40">
+            <input id="end-date" type="date" class="input-field w-40">
+            <button id="apply-filter" class="btn">Filtrele</button>
         </div>
 
         <!-- Görev ekleme -->
@@ -144,6 +181,9 @@
                 <div class="column-header">✅ Bitenler</div><div class="list space-y-3"></div>
             </div>
         </div>
+
+        <!-- Sayfalama -->
+        <div id="pagination" class="flex justify-center mt-6 gap-2"></div>
     </div>
 
     <!-- Şablon -->
@@ -160,12 +200,40 @@
     </template>
 
     <script>
+        // -----------------------------
+        // FİLTRE AYARLARI
+        // -----------------------------
+        let filters = {
+            search: '',
+            status: '',
+            startDate: '',  // boş -> tarih filtresi yok
+            endDate: ''
+        };
+
+        // -----------------------------
+        // API İŞLEMLERİ
+        // -----------------------------
         const api = {
-            list: () => fetch('/api/todos').then(r => r.json()),
+            list: () => {
+                const params = new URLSearchParams();
+                if (filters.search) params.append('search', filters.search);
+                if (filters.status) params.append('status', filters.status);
+                if (filters.startDate) params.append('startDate', filters.startDate);
+                if (filters.endDate) params.append('endDate', filters.endDate);
+
+                return fetch(`/api/todos?${params}`)
+                    .then(r => {
+                        if (!r.ok) throw new Error('Listeleme hatası');
+                        return r.json();
+                    });
+            },
             add: t => fetch('/api/todos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ Text: t.title + '||' + t.desc, Status: 'todo' })
+                body: JSON.stringify({
+                    Text: `${t.title}||${t.desc}`,
+                    Status: 'todo'
+                })
             }).then(r => r.json()),
             upd: (id, p) => fetch(`/api/todos/${id}`, {
                 method: 'PUT',
@@ -175,81 +243,172 @@
             del: id => fetch(`/api/todos/${id}`, { method: 'DELETE' })
         };
 
+        // -----------------------------
+        // YARDIMCI FONKSİYONLAR
+        // -----------------------------
+        function formatDate(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleString('tr-TR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
 
-        function formatDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-        function parseText(txt) { const [t, ...r] = txt.split('||'); return { title: t, desc: r.join('||') } }
+        function parseText(txt) {
+            const [t, ...r] = txt.split('||');
+            return { title: t, desc: r.join('||') };
+        }
 
+        // -----------------------------
+        // ELEMENTLER
+        // -----------------------------
         const tpl = document.getElementById('tpl');
         const titleInput = document.getElementById('task-title');
         const descInput = document.getElementById('task-desc');
         const addBtn = document.getElementById('add-btn');
-        const columns = { todo: document.querySelector('#col-todo .list'), progress: document.querySelector('#col-progress .list'), done: document.querySelector('#col-done .list') };
 
+        const columns = {
+            todo: document.querySelector('#col-todo .list'),
+            progress: document.querySelector('#col-progress .list'),
+            done: document.querySelector('#col-done .list')
+        };
+
+        // -----------------------------
+        // GÖREVLERİ YÜKLE & RENDER ET
+        // -----------------------------
         async function render() {
-            const items = await api.list();
-            Object.values(columns).forEach(c => c.innerHTML = '');
+            try {
+                const items = await api.list();
 
-            items.forEach(t => {
-                const el = tpl.content.firstElementChild.cloneNode(true);
-                const parts = parseText(t.text);
-                el.dataset.id = t.id;
-                el.dataset.status = t.status || 'todo';
+                // Önce sütunları temizle
+                Object.values(columns).forEach(c => c.innerHTML = '');
 
-                el.querySelector('.title-text').textContent = parts.title || '(Başlık yok)';
-                el.querySelector('.desc-text').textContent = parts.desc || '';
-                el.querySelector('.date-text').textContent = t.createdAt ? `🗓 ${formatDate(t.createdAt)}` : '';
+                // Her kayıt için eleman oluştur
+                items.forEach(t => {
+                    const el = tpl.content.firstElementChild.cloneNode(true);
+                    const parts = parseText(t.text);
 
-                // SİL
-                el.querySelector('.del').addEventListener('click', async () => {
-                    const res = await Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'Vazgeç' });
-                    if (res.isConfirmed) { await api.del(t.id); Swal.fire('Silindi', 'Görev silindi', 'success'); render(); }
-                });
+                    el.dataset.id = t.id;
+                    el.dataset.status = t.status || 'todo';
 
-                // DÜZENLE
-                el.querySelector('.edit').addEventListener('click', async () => {
-                    const { value: fv } = await Swal.fire({
-                        title: 'Görevi Düzenle',
-                        html: `<input id="swal-title" class="swal2-input" value="${parts.title || ''}"><textarea id="swal-desc" class="swal2-textarea">${parts.desc || ''}</textarea>`,
-                        focusConfirm: false, showCancelButton: true,
-                        preConfirm: () => ({ title: document.getElementById('swal-title').value.trim(), desc: document.getElementById('swal-desc').value.trim() })
+                    el.querySelector('.title-text').textContent = parts.title || '(Başlık yok)';
+                    el.querySelector('.desc-text').textContent = parts.desc || '';
+                    el.querySelector('.date-text').textContent = t.createdAt
+                        ? `🗓 ${formatDate(t.createdAt)}`
+                        : '';
+
+                    // -----------------------------
+                    // SİL BUTONU
+                    // -----------------------------
+                    el.querySelector('.del').addEventListener('click', async () => {
+                        const res = await Swal.fire({
+                            title: 'Emin misiniz?',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Evet',
+                            cancelButtonText: 'Vazgeç'
+                        });
+                        if (res.isConfirmed) {
+                            await api.del(t.id);
+                            Swal.fire('Silindi', 'Görev silindi', 'success');
+                            render();
+                        }
                     });
-                    if (fv) { await api.upd(t.id, { Text: `${fv.title}||${fv.desc}`, Status: t.status }); Swal.fire('Güncellendi', 'Görev güncellendi', 'success'); render(); }
+
+                    // -----------------------------
+                    // DÜZENLE BUTONU
+                    // -----------------------------
+                    el.querySelector('.edit').addEventListener('click', async () => {
+                        const { value: fv } = await Swal.fire({
+                            title: 'Görevi Düzenle',
+                            html: `
+                                <input id="swal-title" class="swal2-input" value="${parts.title || ''}">
+                                <textarea id="swal-desc" class="swal2-textarea">${parts.desc || ''}</textarea>
+                            `,
+                            showCancelButton: true,
+                            preConfirm: () => ({
+                                title: document.getElementById('swal-title').value.trim(),
+                                desc: document.getElementById('swal-desc').value.trim()
+                            })
+                        });
+                        if (fv) {
+                            await api.upd(t.id, {
+                                Text: `${fv.title}||${fv.desc}`,
+                                Status: t.status
+                            });
+                            Swal.fire('Güncellendi', 'Görev güncellendi', 'success');
+                            render();
+                        }
+                    });
+
+                    // -----------------------------
+                    // DRAG & DROP
+                    // -----------------------------
+                    el.addEventListener('dragstart', () => el.classList.add('dragging'));
+                    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+                    // -----------------------------
+                    // MOBİL TAŞIMA
+                    // -----------------------------
+                    el.addEventListener('click', async (e) => {
+                        if (e.target.classList.contains('edit') || e.target.classList.contains('del')) return;
+                        if (window.innerWidth < 768) {
+                            const { value: newSt } = await Swal.fire({
+                                title: 'Taşı',
+                                input: 'select',
+                                inputOptions: {
+                                    todo: '📝 Yapılacaklar',
+                                    progress: '⚙️ Şu An Yaptıklarım',
+                                    done: '✅ Bitenler'
+                                },
+                                inputValue: t.status || 'todo',
+                                showCancelButton: true
+                            });
+                            if (newSt) {
+                                await api.upd(t.id, { Status: newSt });
+                                Swal.fire('Taşındı', 'Görev güncellendi', 'success');
+                                render();
+                            }
+                        }
+                    });
+
+                    columns[t.status || 'todo'].appendChild(el);
                 });
-
-                // DRAG
-                el.addEventListener('dragstart', () => el.classList.add('dragging'));
-                el.addEventListener('dragend', () => el.classList.remove('dragging'));
-
-                // MOBİL TIKLAMA
-                el.addEventListener('click', async (e) => {
-                    if (e.target.classList.contains('edit') || e.target.classList.contains('del')) return;
-                    if (window.innerWidth < 768) {
-                        const { value: newSt } = await Swal.fire({ title: 'Taşı', input: 'select', inputOptions: { todo: '📝 Yapılacaklar', progress: '⚙️ Şu An Yaptıklarım', done: '✅ Bitenler' }, inputValue: t.status || 'todo', showCancelButton: true });
-                        if (newSt) { await api.upd(t.id, { Status: newSt }); Swal.fire('Taşındı', 'Görev güncellendi', 'success'); render(); }
-                    }
-                });
-
-                columns[t.status || 'todo'].appendChild(el);
-            });
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Hata', err.message, 'error');
+            }
         }
 
-        // Ekleme
+        // -----------------------------
+        // EKLEME
+        // -----------------------------
         addBtn.addEventListener('click', async () => {
-            const title = titleInput.value.trim(), desc = descInput.value.trim();
+            const title = titleInput.value.trim();
+            const desc = descInput.value.trim();
             if (!title) return;
             await api.add({ title, desc });
-            titleInput.value = ''; descInput.value = '';
+            titleInput.value = '';
+            descInput.value = '';
             render();
         });
 
-        [titleInput, descInput].forEach(el => el.addEventListener('keypress', e => { if (e.key === 'Enter' && e.ctrlKey) addBtn.click(); }));
+        [titleInput, descInput].forEach(el =>
+            el.addEventListener('keypress', e => {
+                if (e.key === 'Enter' && e.ctrlKey) addBtn.click();
+            })
+        );
 
-        // DRAG&DROP sütun
+        // -----------------------------
+        // DRAG & DROP SÜTUN
+        // -----------------------------
         document.querySelectorAll('.column').forEach(col => {
-            col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+            col.addEventListener('dragover', e => {
+                e.preventDefault();
+                col.classList.add('drag-over');
+            });
             col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-            col.addEventListener('drop', async e => {
-                e.preventDefault(); col.classList.remove('drag-over');
+            col.addEventListener('drop', async () => {
                 const dragged = document.querySelector('.dragging');
                 if (dragged) {
                     const id = dragged.dataset.id;
@@ -260,41 +419,47 @@
             });
         });
 
+        // -----------------------------
         // LOGOUT
+        // -----------------------------
         document.getElementById('logout-btn').addEventListener('click', async () => {
             const res = await fetch('/api/auth/logout', { method: 'POST' });
-            if (res.ok) { Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info').then(() => location.href = '/login.html'); }
+            if (res.ok)
+                Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info')
+                    .then(() => location.href = '/login.html');
         });
 
-        // Kullanıcı rolünü backend’den cookie yerine localStorage’da saklayalım
+        // -----------------------------
+        // ADMIN KULLANICI KONTROLÜ
+        // -----------------------------
         async function checkRole() {
-            const res = await fetch('/api/auth/me'); // backend’de cookie’den kullanıcıyı dönen bir endpoint olmalı
+            const res = await fetch('/api/auth/me');
             if (res.ok) {
                 const user = await res.json();
-                if (user.role === "Admin") {
+                if (user.role === "Admin")
                     document.getElementById('users-btn').classList.remove('hidden');
-                }
             }
         }
 
-        // Kullanıcılar sayfasına yönlendirme
-        document.getElementById('users-btn').addEventListener('click', () => {
-            location.href = '/users.html';
+        document.getElementById('users-btn').addEventListener('click', () => location.href = '/users.html');
+
+        // -----------------------------
+        // FİLTRE UYGULAMA
+        // -----------------------------
+        document.getElementById('apply-filter').addEventListener('click', () => {
+            filters.search = document.getElementById('search-input').value.trim();
+            filters.status = document.getElementById('status-filter').value;
+            filters.startDate = document.getElementById('start-date').value;
+            filters.endDate = document.getElementById('end-date').value;
+            render();
         });
 
-        // LOGOUT
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            const res = await fetch('/api/auth/logout', { method: 'POST' });
-            if (res.ok) {
-                Swal.fire('Çıkış yapıldı', 'Yeniden giriş yapınız', 'info').then(() => location.href = '/login.html');
-            }
-        });
-
-        // İlk açılışta rolü kontrol et
+        // -----------------------------
+        // SAYFA AÇILIŞI
+        // -----------------------------
         checkRole();
         render();
-
-
     </script>
+
 </body>
 </html>
