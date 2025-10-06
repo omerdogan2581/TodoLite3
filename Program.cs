@@ -12,7 +12,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // --- Servisler ---
 builder.Services.AddScoped<UserService>();
-// Eğer TodoService EFCore’a göre güncellediysen:
 builder.Services.AddScoped<TodoService>();
 
 // --- API özellikleri ---
@@ -36,6 +35,7 @@ app.MapGet("/", (HttpContext ctx) =>
 
     return Results.Empty;
 });
+
 
 // Endpoint grupları
 app.MapAuthEndpoints();

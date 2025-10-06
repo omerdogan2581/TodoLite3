@@ -61,6 +61,51 @@ namespace TodoLite.Endpoints
                 return Results.Ok(items); // sadece liste döndürüyoruz
             });
 
+            // GET - Kolona özel listeleme
+            app.MapGet("/api/todos/by-status", async (
+                HttpContext ctx,
+                AppDbContext db,
+                string status,
+                int page = 1,
+                int pageSize = 5,
+                string? search = null,
+                DateTime? startDate = null,
+                DateTime? endDate = null
+            ) =>
+            {
+                var uid = ctx.Items["uid"]?.ToString();
+                if (uid == null) return Results.Unauthorized();
+
+                var query = db.Todos.AsQueryable()
+                                    .Where(t => t.CreatorUserId == uid && t.Status == status);
+
+                // Filtreler
+                if (!string.IsNullOrEmpty(search))
+                    query = query.Where(t => t.Text.Contains(search));
+
+                if (startDate.HasValue)
+                    query = query.Where(t => t.CreatedAt >= startDate.Value);
+                if (endDate.HasValue)
+                    query = query.Where(t => t.CreatedAt <= endDate.Value);
+
+                var total = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return Results.Ok(new
+                {
+                    total,
+                    page,
+                    pageSize,
+                    items
+                });
+            });
+
+
 
             // POST - Yeni todo oluştur
             app.MapPost("/api/todos", async (HttpContext ctx, AppDbContext db) =>

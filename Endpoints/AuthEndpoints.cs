@@ -50,8 +50,16 @@ namespace TodoLite.Endpoints
                 if (u == null) return Results.Unauthorized();
                 if (!u.Status) return Results.Forbid();
 
-                ctx.Response.Cookies.Append("uid", u.Id,
-                    new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Lax });
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddMinutes(120) // oturum süresi
+                };
+
+                ctx.Response.Cookies.Append("uid", u.Id, cookieOptions);
+                ctx.Response.Cookies.Append("role", u.Role, cookieOptions);
 
                 return Results.Ok(new { u.Id, u.Username, u.Role });
             });
@@ -60,6 +68,7 @@ namespace TodoLite.Endpoints
             app.MapPost("/api/auth/logout", (HttpContext ctx) =>
             {
                 ctx.Response.Cookies.Delete("uid");
+                ctx.Response.Cookies.Delete("role");
                 return Results.Ok();
             });
 
@@ -67,7 +76,9 @@ namespace TodoLite.Endpoints
             app.MapGet("/api/auth/me", async (HttpContext ctx, AppDbContext db) =>
             {
                 var uid = ctx.Request.Cookies["uid"];
-                if (string.IsNullOrEmpty(uid))
+                var role = ctx.Request.Cookies["role"];
+
+                if (string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(role))
                     return Results.Unauthorized();
 
                 var u = await db.Users.FirstOrDefaultAsync(x => x.Id == uid);
